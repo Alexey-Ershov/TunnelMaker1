@@ -9,6 +9,8 @@
 #include <curlpp/Exception.hpp>
 #include <curlpp/Infos.hpp>
 
+#include <boost/format.hpp>
+
 #include <cstdlib>
 
 
@@ -22,7 +24,7 @@ void TunnelMaker::init(Loader* loader, const Config& config)
     /*Topology* topo = Topology::get(loader);*/
 
     cli->register_command(
-        cli_pattern(R"(mktun\s+([0-9]+)\s+([0-9]+))"),
+        cli_pattern(R"(mktun\s+([-\w]+)\s+([0-9]+)\s+([0-9]+)\s+([0-9]+)\s+([0-9]+)\s+([0-9]+)\s+([0-9]+))"),
         [=](cli_match const& match)
         {
             cli->print("{:-^90}", "  TUNNEL MAKER  ");
@@ -30,24 +32,51 @@ void TunnelMaker::init(Loader* loader, const Config& config)
             try {
                 curlpp::Cleanup cleaner;
                 curlpp::Easy request;
-                
-                std::string url =
-                        std::string("http://172.30.7.201:8080/routes/id/") +
-                        std::string(match[1]) +
-                        std::string("/delete-path/1/");
 
                 using namespace curlpp::Options;
-                /*request.setOpt(Verbose(true));*/
-                request.setOpt(Url(url));
-
-                /*std::string post_data = "{\"broken_flag\": \"true\"}";
-
-                DLOG(INFO) << "DEBUG: " << post_data.length();
                 
+                // request.setOpt(Verbose(true));
+                request.setOpt(
+                        Url("http://172.30.7.201:8080/bridge_domains/"));
+
+                std::string put_request_data = (boost::format(
+                "{"
+                    "\"name\": \"%s\","
+                    "\"sw\": ["
+                        "{"
+                            "\"dpid\": \"%s\","
+                            "\"ports\": ["
+                                "{"
+                                    "\"port_num\": \"%s\","
+                                    "\"stag\": \"%s\""
+                                "}"
+                            "]"
+                        "},"
+                        "{"
+                            "\"dpid\": \"%s\","
+                            "\"ports\": ["
+                                "{"
+                                    "\"port_num\": \"%s\","
+                                    "\"stag\": \"%s\""
+                                "}"
+                            "]"
+                        "}"
+                    "],"
+                    "\"type\": \"P2P\""
+                "}") % match[1]
+                     % match[2]
+                     % match[3]
+                     % match[4]
+                     % match[5]
+                     % match[6]
+                     % match[7]).str();
+
                 request.setOpt(new curlpp::options::PostFields(
-                        post_data));
+                        put_request_data));
                 request.setOpt(new curlpp::options::PostFieldSize(
-                        post_data.length()));*/
+                        put_request_data.length()));
+
+                request.setOpt(new curlpp::options::CustomRequest{"PUT"});
 
                 request.perform();
 
@@ -58,47 +87,39 @@ void TunnelMaker::init(Loader* loader, const Config& config)
                 LOG(ERROR) << e.what();
             }
 
-            /*RouteSelector selector {
-                route_selector::app=ServiceFlag::None,
-                route_selector::metrics=MetricsFlag::Hop
-            };
+            /*try {
+                curlpp::Cleanup cleaner;
+                curlpp::Easy request;
+                
+                std::string url =
+                        std::string("http://172.30.7.201:8080/routes/id/") +
+                        std::string(match[1]) +
+                        std::string("/add-path/");
 
-            uint32_t route_id = topo->newRoute(std::stoi(match[1]),
-                                               std::stoi(match[2]),
-                                               selector);
+                using namespace curlpp::Options;
+                // request.setOpt(Verbose(true));
+                request.setOpt(Url(url));
 
-            if (!route_id) {
-                LOG(WARNING) << "[TunnelMaker] Can't make tunnel.";
-                return;
-            }
+                std::string post_data = "{\"broken_flag\": \"true\"}";
 
-            DLOG(INFO) << "[TunnelMaker] route_id = " << route_id;
+                DLOG(INFO) << "DEBUG: " << post_data.length();
+                
+                request.setOpt(new curlpp::options::PostFields(
+                        post_data));
+                request.setOpt(new curlpp::options::PostFieldSize(
+                        post_data.length()));
 
-            data_link_route dl_route = topo->getFirstWorkPath(route_id);
-            for (auto& it: dl_route) {
-                DLOG(INFO) << "[TunnelMaker] dpid = " << it.dpid
-                           << " port = " << it.port;
-            }
+                request.perform();
+
+            } catch (curlpp::LogicError& e) {
+                LOG(ERROR) << e.what();
             
-            uint8_t path_id = 15;
-            path_id = topo->newPath(route_id, selector);
-
-            if (path_id == max_path_id) {
-                LOG(WARNING) << "[TunnelMaker] Can't add dynamic path.";
-                return;
-            }
-
-            DLOG(INFO) << "[TunnelMaker] path_id = " << path_id;
-
-            topo->addDynamic(route_id, selector);
-
-            if (topo->getFirstWorkPathId(route_id) == max_path_id) {
-                LOG(WARNING) << "[TunnelMaker] Can't add dynamic path.";
-                return;
+            } catch (curlpp::RuntimeError& e) {
+                LOG(ERROR) << e.what();
             }*/
 
-            cli->print("Tunnel between switches with dpid {} and {} was made",
-                       match[1], match[2]);
+            /*cli->print("Tunnel between switches with dpid {} and {} was made",
+                       match[1], match[2]);*/
             cli->print("{:-^90}", "");
         }
     );
