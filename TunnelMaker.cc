@@ -26,6 +26,35 @@ void TunnelMaker::init(Loader* loader, const Config& config)
     ip_ = config_get(config_cd(config, "tunnel-maker"), "ip", "127.0.0.1");
 
     cli_->register_command(
+        cli_pattern(R"(mktun\s+--help)"),
+        [=](cli_match const& match)
+        {
+            cli_->print("{:-^90}", "  TUNNEL MAKER  ");
+
+            cli_->print("mktun "
+                        "NAME_OF_BRIDGE_DOMAIN "
+                        "FIRST_DPID PORT_NUMBER VLAN_ID "
+                        "SECOND_DPID PORT_NUMBER VLAN_ID "
+                        "--hops MAX_NUMBER_OF_HOPS "
+                        "--freeroute");
+            
+            cli_->print("{:-^90}", "");
+        }
+    );
+
+    cli_->register_command(
+        cli_pattern(R"(deltun\s+--help)"),
+        [=](cli_match const& match)
+        {
+            cli_->print("{:-^90}", "  TUNNEL MAKER  ");
+
+            cli_->print("deltun NAME_OF_BRIDGE_DOMAIN");
+            
+            cli_->print("{:-^90}", "");
+        }
+    );
+
+    cli_->register_command(
         cli_pattern(R"(mktun\s+([-\w]+)\s+([0-9]+)\s+([0-9]+)\s+([0-9]+)\s+([0-9]+)\s+([0-9]+)\s+([0-9]+)\s+--hops\s+([0-9]+))"),
         [=](cli_match const& match)
         {
@@ -79,7 +108,6 @@ void TunnelMaker::init(Loader* loader, const Config& config)
             cli_->print("{:-^90}", "");
         }
     );
-
 }
 
 void TunnelMaker::startUp(Loader* loader)
@@ -270,10 +298,10 @@ bool TunnelMaker::add_path(std::string name)
         auto path_id = std::stoi(std::string(json_response["path_id"]));
 
         auto path = topo_->getPath(route_id, path_id);
-        DLOG(INFO) << "### PATH ###";
+        /*DLOG(INFO) << "### PATH ###";
         for (auto& it: path) {
             DLOG(INFO) << it.dpid << ":" << it.port;
-        }
+        }*/
 
         if (static_cast<int>((path.size() - 2) / 2) >
                 std::stoi(match_[8]) - 2) {

@@ -18,6 +18,7 @@ public:
     void startUp(Loader* loader) override;
 
 private:
+    // BD name -> route ID.
     std::map<std::string, int> bd_routes_;
     Topology* topo_;
     CommandLine* cli_;
