@@ -57,10 +57,15 @@ void TunnelMaker::init(Loader* loader, const Config& config)
     );
 
     cli_->register_command(
-        cli_pattern(R"(mktun\s+([-\w]+)\s+([0-9]+)\s+([0-9]+)\s+([0-9]+)\s+([0-9]+)\s+([0-9]+)\s+([0-9]+)\s+--hops\s+([0-9]+))"),
+        cli_pattern(R"(mktun\s+([-\w]+)\s+([0-9]+)\s+([0-9]+)\s+([0-9]+)\s+([0-9]+)\s+([0-9]+)\s+([0-9]+)(\s+--hops\s+([0-9]+))?)"),
+        
         [=](cli_match const& match)
         {
             cli_->print("{:-^90}", "  TUNNEL MAKER  ");
+
+            DLOG(INFO) << "size of match = " << match.size();
+            DLOG(INFO) << "match[8] = " << match[8];
+            DLOG(INFO) << "match[9] = " << match[9];
 
             match_ = match;
 
@@ -75,13 +80,17 @@ void TunnelMaker::init(Loader* loader, const Config& config)
                         DLOG(INFO) << it.first << ": " << it.second;
                     }*/
 
-                    tun_attrs_[match[1]].num_of_hops = std::stoi(match[8]);
+                    if (match[9] != "") {
+                        tun_attrs_[match[1]].num_of_hops = std::stoi(match[9]);
+                    
+                    } else {
+                        tun_attrs_[match[1]].num_of_hops = -1;
+                    }
 
-                    check_tunnel_requirements();
-
-                    while(add_path(match[1]));
-
-                    check_path_collisions();
+                    if (check_tunnel_requirements()) {
+                        while(add_path(match[1]));
+                        check_path_collisions();
+                    }
 
                     /*change_path(match[1]);*/
 
@@ -273,25 +282,31 @@ void TunnelMaker::delete_bd(std::string name)
     request.perform();
 }
 
-void TunnelMaker::check_tunnel_requirements()
+bool TunnelMaker::check_tunnel_requirements()
 {
     auto path = topo_->getFirstWorkPath(tun_attrs_[match_[1]].route_id);
     tun_attrs_[match_[1]].work_path = path;
     /*DLOG(INFO) << "DEBUG: path.size = " << path.size();*/
-    if (static_cast<int>((path.size() - 2) / 2) >
-            std::stoi(match_[8]) - 2) {
+    int num_of_hops = tun_attrs_[match_[1]].num_of_hops;
+    
+    if (num_of_hops != -1 and
+            static_cast<int>((path.size() - 2) / 2) > num_of_hops - 2) {
         
         LOG(ERROR) << "Can't create tunnel with such "
                       "requirements";
         delete_bd(match_[1]);
+        tun_attrs_.erase(match_[1]);
 
-    } else {
-        LOG(INFO) << "Tunnel between switches with dpid "
-                  << match_[2]
-                  << " and "
-                  << match_[5]
-                  << " was made successfully";
+        return false;
     }
+    
+    LOG(INFO) << "Tunnel between switches with dpid "
+              << match_[2]
+              << " and "
+              << match_[5]
+              << " was made successfully";
+
+    return true;
 }
 
 bool TunnelMaker::add_path(std::string name)
@@ -335,8 +350,10 @@ bool TunnelMaker::add_path(std::string name)
             DLOG(INFO) << it.dpid << ":" << it.port;
         }*/
 
-        if (static_cast<int>((path.size() - 2) / 2) >
-                std::stoi(match_[8]) - 2) {
+        int num_of_hops = tun_attrs_[name].num_of_hops;
+    
+        if (num_of_hops != -1 and
+                static_cast<int>((path.size() - 2) / 2) > num_of_hops - 2) {
             
             // LOG(ERROR) << "Can't add path";
             delete_path(std::to_string(route_id),
@@ -435,7 +452,13 @@ void TunnelMaker::check_path_collisions()
 
                             was_collision = true;
 
-                            if (current_tun_attrs.num_of_hops >
+                            if (current_tun_attrs.num_of_hops == -1) {
+                                change_path(match_[1]);
+
+                            } else if (it.second.num_of_hops == -1) {
+                                change_path(it.first);
+                            
+                            } else if (current_tun_attrs.num_of_hops >
                                     it.second.num_of_hops) {
                                 
                                 change_path(match_[1]);

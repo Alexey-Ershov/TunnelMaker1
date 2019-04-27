@@ -38,7 +38,7 @@ private:
     void create_bd();
     void fetch_route_id(std::string name = "");
     void delete_bd(std::string name);
-    void check_tunnel_requirements();
+    bool check_tunnel_requirements();
     bool add_path(std::string name);
     void delete_path(std::string route_id, std::string path_id);
     void change_path(std::string bd_name);
