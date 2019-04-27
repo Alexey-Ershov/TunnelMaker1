@@ -2,7 +2,8 @@
 
 IP=172.30.7.201
 PORT=6653
-TOPOLOGY=topology.py
+TOPOLOGY=$1
+# TOPOLOGY=topology.py
 
 sudo mn --custom $TOPOLOGY \
         --topo mytopo \

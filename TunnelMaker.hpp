@@ -8,7 +8,16 @@
 #include <string>
 #include <map>
 
-namespace runos { 
+namespace runos {
+
+struct TunnelAttrs
+{
+    int route_id;
+    int num_of_hops;
+    int first_path_id;
+    int last_path_id;
+    data_link_route work_path;
+};
 
 class TunnelMaker : public Application {
     Q_OBJECT
@@ -18,8 +27,8 @@ public:
     void startUp(Loader* loader) override;
 
 private:
-    // BD name -> route ID.
-    std::map<std::string, int> bd_routes_;
+    // BD name -> Tunnel attributes.
+    std::map<std::string, TunnelAttrs> tun_attrs_;
     Topology* topo_;
     CommandLine* cli_;
     cli_match match_;
@@ -32,6 +41,8 @@ private:
     void check_tunnel_requirements();
     bool add_path(std::string name);
     void delete_path(std::string route_id, std::string path_id);
+    void change_path(std::string bd_name);
+    void check_path_collisions();
 };
 
 } // namespace runos
