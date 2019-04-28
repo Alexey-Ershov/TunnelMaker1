@@ -57,8 +57,8 @@ void TunnelMaker::init(Loader* loader, const Config& config)
     );
 
     cli_->register_command(
-        cli_pattern(R"(mktun\s+([-\w]+)\s+([0-9]+)\s+([0-9]+)\s+([0-9]+)\s+([0-9]+)\s+([0-9]+)\s+([0-9]+)(\s+--hops\s+([0-9]+))?)"),
-        
+        cli_pattern(R"(mktun\s+([-\w]+)\s+([0-9]+)\s+([0-9]+)\s+([0-9]+)\s+([0-9]+)\s+([0-9]+)\s+([0-9]+)(\s+--hops\s+([0-9]+))?(\s+--freeroute)?)"),
+
         [=](cli_match const& match)
         {
             cli_->print("{:-^90}", "  TUNNEL MAKER  ");
@@ -66,6 +66,11 @@ void TunnelMaker::init(Loader* loader, const Config& config)
             DLOG(INFO) << "size of match = " << match.size();
             DLOG(INFO) << "match[8] = " << match[8];
             DLOG(INFO) << "match[9] = " << match[9];
+            DLOG(INFO) << "match[last] = " << match[match.size() - 1];
+
+            if (match[match.size() - 1] != "") {
+                tun_attrs_[match[1]].free_route = true;
+            }
 
             match_ = match;
 
@@ -110,6 +115,9 @@ void TunnelMaker::init(Loader* loader, const Config& config)
 
                         DLOG(INFO) << "last_path_id = "
                                    << it.second.last_path_id;
+
+                        DLOG(INFO) << "free_route = "
+                                   << it.second.free_route;
                     }
                 }
 
@@ -428,6 +436,12 @@ void TunnelMaker::check_path_collisions()
 
         for (auto& it: tun_attrs_) {
             if (match_[1] != it.first) {
+                if (not tun_attrs_[match_[1]].free_route and
+                        not tun_attrs_[it.first].free_route) {
+
+                    continue;
+                }
+
                 auto current_tun_attrs = tun_attrs_[match_[1]];
                 auto path1 = current_tun_attrs.work_path;
                 auto path2 = it.second.work_path;

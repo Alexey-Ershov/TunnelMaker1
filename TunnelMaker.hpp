@@ -17,6 +17,7 @@ struct TunnelAttrs
     int first_path_id;
     int last_path_id;
     data_link_route work_path;
+    bool free_route = false;
 };
 
 class TunnelMaker : public Application {
