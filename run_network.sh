@@ -1,11 +1,15 @@
 #!/usr/bin/env bash
 
-IP=172.30.7.201
-PORT=6653
-TOPOLOGY=$1
-# TOPOLOGY=topology.py
+if [[ $1 = "--help" ]]; then
+    echo './run_network.sh "topo_file.py"'
 
-sudo mn --custom $TOPOLOGY \
-        --topo mytopo \
-        --switch ovsk,protocols=OpenFlow13 \
-        --controller remote,ip=$IP,port=$PORT
+else
+    IP=172.30.7.201
+    PORT=6653
+    TOPOLOGY=$1
+
+    sudo mn --custom $TOPOLOGY \
+            --topo mytopo \
+            --switch ovsk,protocols=OpenFlow13 \
+            --controller remote,ip=$IP,port=$PORT
+fi

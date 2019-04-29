@@ -27,6 +27,9 @@ public:
     void init(Loader* loader, const Config& config) override;
     void startUp(Loader* loader) override;
 
+protected slots:
+    void onLinkDown();
+
 private:
     // BD name -> Tunnel attributes.
     std::map<std::string, TunnelAttrs> tun_attrs_;
@@ -35,6 +38,7 @@ private:
     cli_match match_;
     bool was_created_ = false;
     std::string ip_;
+    bool was_collision_ = false;
 
     void create_bd();
     void fetch_route_id(std::string name = "");
@@ -42,8 +46,10 @@ private:
     bool check_tunnel_requirements();
     bool add_path(std::string name);
     void delete_path(std::string route_id, std::string path_id);
-    void change_path(std::string bd_name);
+    bool change_path(std::string bd_name);
     void check_path_collisions();
+    void cmp_bd(std::pair<std::string, TunnelAttrs> first_bd,
+                std::pair<std::string, TunnelAttrs> second_bd);
 };
 
 } // namespace runos
