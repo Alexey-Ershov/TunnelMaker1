@@ -68,11 +68,6 @@ void TunnelMaker::init(Loader* loader, const Config& config)
         {
             cli_->print("{:-^90}", "  TUNNEL MAKER  ");
 
-            DLOG(INFO) << "size of match = " << match.size();
-            DLOG(INFO) << "match[8] = " << match[8];
-            DLOG(INFO) << "match[9] = " << match[9];
-            DLOG(INFO) << "match[last] = " << match[match.size() - 1];
-
             if (match[match.size() - 1] != "") {
                 tun_attrs_[match[1]].free_route = true;
             }
@@ -83,12 +78,7 @@ void TunnelMaker::init(Loader* loader, const Config& config)
                 create_bd();
 
                 if (was_created_) {
-                    fetch_route_id();
-
-                    /*DLOG(INFO) << "AFTER ADDING NEW BD";
-                    for (auto& it: tun_attrs_) {
-                        DLOG(INFO) << it.first << ": " << it.second;
-                    }*/
+                    fetch_route_id(match[1]);
 
                     if (match[9] != "") {
                         tun_attrs_[match[1]].num_of_hops = std::stoi(match[9]);
@@ -97,60 +87,9 @@ void TunnelMaker::init(Loader* loader, const Config& config)
                         tun_attrs_[match[1]].num_of_hops = -1;
                     }
 
-                    /*if (match[1] == "BD1") {
-                        change_path(match[1]);
-                    }*/
-
-                    if (check_tunnel_requirements()) {
+                    if (check_tunnel_requirements(match[1])) {
                         while(add_path(match[1]));
-
-                        DLOG(INFO) << "TUN ATTR CPC";
-                        for (auto& it: tun_attrs_) {
-                            DLOG(INFO) << "name = " << it.first;
-                            DLOG(INFO) << "num_of_hops = "
-                                       << it.second.num_of_hops;
-                            
-                            DLOG(INFO) << "WORK PATH";
-                            for (auto& path: it.second.work_path) {
-                                DLOG(INFO) << path.dpid << ":" << path.port;
-                            }
-
-                            DLOG(INFO) << "first_path_id = "
-                                       << it.second.first_path_id;
-
-                            DLOG(INFO) << "last_path_id = "
-                                       << it.second.last_path_id;
-
-                            DLOG(INFO) << "free_route = "
-                                       << it.second.free_route;
-                        }
-
-                        check_path_collisions();
-                    }
-
-                    /*change_path(match[1]);*/
-
-                    // topo_->setUsedPath(tun_attrs_[match[1]].route_id, 1);
-
-                    DLOG(INFO) << "TUN ATTR";
-                    for (auto& it: tun_attrs_) {
-                        DLOG(INFO) << "name = " << it.first;
-                        DLOG(INFO) << "num_of_hops = "
-                                   << it.second.num_of_hops;
-                        
-                        DLOG(INFO) << "WORK PATH";
-                        for (auto& path: it.second.work_path) {
-                            DLOG(INFO) << path.dpid << ":" << path.port;
-                        }
-
-                        DLOG(INFO) << "first_path_id = "
-                                   << it.second.first_path_id;
-
-                        DLOG(INFO) << "last_path_id = "
-                                   << it.second.last_path_id;
-
-                        DLOG(INFO) << "free_route = "
-                                   << it.second.free_route;
+                        check_path_collisions(match[1]);
                     }
                 }
 
@@ -188,24 +127,8 @@ void TunnelMaker::init(Loader* loader, const Config& config)
     );
 }
 
-void TunnelMaker::startUp(Loader* loader)
-{
-    /*DLOG(INFO) << "DEBUG1";
-    fetch_route_id();
-    DLOG(INFO) << "DEBUG2";
-
-    DLOG(INFO) << "REGULAR FETCH";
-    for (auto& it: tun_attrs_) {
-        DLOG(INFO) << it.first << ": " << it.second;
-    }*/
-}
-
 void TunnelMaker::onLinkDown()
 {
-    DLOG(INFO) << "onLinkDown()";
-    /*sleep(5);
-    DLOG(INFO) << "WAKE UP!!!";*/
-
     bool paths_were_changed = false;
 
     for (auto& it: tun_attrs_) {
@@ -221,27 +144,6 @@ void TunnelMaker::onLinkDown()
         }
     }
 
-    DLOG(INFO) << "TUN ATTR";
-    for (auto& it: tun_attrs_) {
-        DLOG(INFO) << "name = " << it.first;
-        DLOG(INFO) << "num_of_hops = "
-                   << it.second.num_of_hops;
-        
-        DLOG(INFO) << "WORK PATH";
-        for (auto& path: it.second.work_path) {
-            DLOG(INFO) << path.dpid << ":" << path.port;
-        }
-
-        DLOG(INFO) << "first_path_id = "
-                   << it.second.first_path_id;
-
-        DLOG(INFO) << "last_path_id = "
-                   << it.second.last_path_id;
-
-        DLOG(INFO) << "free_route = "
-                   << it.second.free_route;
-    }
-
     if (not paths_were_changed or tun_attrs_.empty()) {
         return;
     }
@@ -251,18 +153,12 @@ void TunnelMaker::onLinkDown()
     auto next_to_last_it = --tun_attrs_.end();
 
     do {
-        DLOG(INFO) << "DEBUG: DO";
-
         was_collision_ = false;
         
         for (auto it_i = tun_attrs_.begin(); it_i != next_to_last_it; ++it_i) {
-            DLOG(INFO) << "DEBUG: BIG FOR: " << (*it_i).first;
-
             for (auto it_j = std::next(it_i);
                     it_j != tun_attrs_.end();
                     ++it_j) {
-
-                DLOG(INFO) << "DEBUG: SMALL FOR: " << (*it_j).first;
 
                 if ((*it_i).first == (*it_j).first) {
                     continue;
@@ -274,34 +170,10 @@ void TunnelMaker::onLinkDown()
                     continue;
                 }
 
-                DLOG(INFO) << "cmp_bd(" << (*it_i).first
-                           << ", " << (*it_j).first
-                           << ");";
                 cmp_bd(*it_i, *it_j);
             }
         }
     } while (was_collision_);
-
-    DLOG(INFO) << "TUN ATTR";
-    for (auto& it: tun_attrs_) {
-        DLOG(INFO) << "name = " << it.first;
-        DLOG(INFO) << "num_of_hops = "
-                   << it.second.num_of_hops;
-        
-        DLOG(INFO) << "WORK PATH";
-        for (auto& path: it.second.work_path) {
-            DLOG(INFO) << path.dpid << ":" << path.port;
-        }
-
-        DLOG(INFO) << "first_path_id = "
-                   << it.second.first_path_id;
-
-        DLOG(INFO) << "last_path_id = "
-                   << it.second.last_path_id;
-
-        DLOG(INFO) << "free_route = "
-                   << it.second.free_route;
-    }
 }
 
 
@@ -371,10 +243,8 @@ void TunnelMaker::create_bd()
     }
 }
 
-void TunnelMaker::fetch_route_id(std::string name)
+void TunnelMaker::fetch_route_id(std::string bd_name)
 {
-    /*DLOG(INFO) << "DEBUG3: name = " << name;*/
-
     curlpp::Easy request;
     request.setOpt(
             Url(std::string("http://") +
@@ -392,28 +262,22 @@ void TunnelMaker::fetch_route_id(std::string name)
     json json_response = json::parse(response.str());
     
     for (auto& item: json_response["array"]) {
-        if (name == "") {
-            tun_attrs_[item["name"]].route_id =
+        if (item["name"] == bd_name) {
+            tun_attrs_[bd_name].route_id =
                     std::stoi(std::string((item["routesId"])[0]));
-        
-        } else {
-            if (item["name"] == name) {
-                tun_attrs_[name].route_id =
-                        std::stoi(std::string((item["routesId"])[0]));
-                break;
-            }
+            break;
         }
     }
 }
 
-void TunnelMaker::delete_bd(std::string name)
+void TunnelMaker::delete_bd(std::string bd_name)
 {
     curlpp::Easy request;
     
     std::string url = std::string("http://") +
                       ip_ +
                       std::string(":8080/bridge_domains/") +
-                      name +
+                      bd_name +
                       std::string("/");
     
     request.setOpt(Url(url));
@@ -427,20 +291,19 @@ void TunnelMaker::delete_bd(std::string name)
     request.perform();
 }
 
-bool TunnelMaker::check_tunnel_requirements()
+bool TunnelMaker::check_tunnel_requirements(std::string bd_name)
 {
-    auto path = topo_->getFirstWorkPath(tun_attrs_[match_[1]].route_id);
-    tun_attrs_[match_[1]].work_path = path;
-    /*DLOG(INFO) << "DEBUG: path.size = " << path.size();*/
-    int num_of_hops = tun_attrs_[match_[1]].num_of_hops;
+    auto path = topo_->getFirstWorkPath(tun_attrs_[bd_name].route_id);
+    tun_attrs_[bd_name].work_path = path;
+    int num_of_hops = tun_attrs_[bd_name].num_of_hops;
     
     if (num_of_hops != -1 and
             static_cast<int>((path.size() - 2) / 2) > num_of_hops - 2) {
         
         LOG(ERROR) << "Can't create tunnel with such "
                       "requirements";
-        delete_bd(match_[1]);
-        tun_attrs_.erase(match_[1]);
+        delete_bd(bd_name);
+        tun_attrs_.erase(bd_name);
 
         return false;
     }
@@ -454,7 +317,7 @@ bool TunnelMaker::check_tunnel_requirements()
     return true;
 }
 
-bool TunnelMaker::add_path(std::string name)
+bool TunnelMaker::add_path(std::string bd_name)
 {
     curlpp::Easy request;
     
@@ -462,7 +325,7 @@ bool TunnelMaker::add_path(std::string name)
             std::string("http://") +
             ip_ +
             std::string(":8080/routes/id/") +
-            std::to_string(tun_attrs_[name].route_id) +
+            std::to_string(tun_attrs_[bd_name].route_id) +
             std::string("/add-path/");
 
     using namespace curlpp::Options;
@@ -482,25 +345,16 @@ bool TunnelMaker::add_path(std::string name)
 
     request.perform();
 
-    // DLOG(INFO) << "### RESPONSE ###\n" << response.str();
-
     json json_response = json::parse(response.str());
     if (json_response["act"] == "path created") {
         auto route_id = std::stoi(std::string(json_response["route_id"]));
         auto path_id = std::stoi(std::string(json_response["path_id"]));
-
         auto path = topo_->getPath(route_id, path_id);
-        /*DLOG(INFO) << "### PATH ###";
-        for (auto& it: path) {
-            DLOG(INFO) << it.dpid << ":" << it.port;
-        }*/
-
-        int num_of_hops = tun_attrs_[name].num_of_hops;
+        int num_of_hops = tun_attrs_[bd_name].num_of_hops;
     
         if (num_of_hops != -1 and
                 static_cast<int>((path.size() - 2) / 2) > num_of_hops - 2) {
             
-            // LOG(ERROR) << "Can't add path";
             delete_path(std::to_string(route_id),
                         std::to_string(path_id));
 
@@ -562,7 +416,7 @@ bool TunnelMaker::change_path(std::string bd_name)
     return true;
 }
 
-void TunnelMaker::check_path_collisions()
+void TunnelMaker::check_path_collisions(std::string bd_name)
 {
     if (!was_created_) {
         return;
@@ -574,20 +428,17 @@ void TunnelMaker::check_path_collisions()
         was_collision_ = false;
 
         for (auto& it: tun_attrs_) {
-            if (match_[1] == it.first) {
+            if (bd_name == it.first) {
                 continue;
             }
 
-            if (not tun_attrs_[match_[1]].free_route and
+            if (not tun_attrs_[bd_name].free_route and
                     not tun_attrs_[it.first].free_route) {
 
                 continue;
             }
 
-            DLOG(INFO) << "cmp_bd(" << match_[1]
-                           << ", " << it.first
-                           << ");";
-            cmp_bd(std::make_pair(match_[1], tun_attrs_[match_[1]]), it);
+            cmp_bd(std::make_pair(bd_name, tun_attrs_[bd_name]), it);
         }
     } while (was_collision_);
 }
@@ -615,8 +466,6 @@ void TunnelMaker::cmp_bd(
                     (path1[i].dpid == path2[j + 1].dpid and
                     path1[i + 1].dpid == path2[j].dpid)) {
                 
-                LOG(ERROR) << "COLLISION!";
-
                 was_collision_ = true;
 
                 if (first_bd.second.num_of_hops == -1) {
