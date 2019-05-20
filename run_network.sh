@@ -1,12 +1,12 @@
 #!/usr/bin/env bash
 
 if [[ $1 = "--help" ]]; then
-    echo './run_network.sh "topo_file.py"'
+    echo './run_network.sh TOPOLOGY_FILE CONTROLLER_IP CONTROLLER_PORT'
 
 else
-    IP=172.30.7.201
-    PORT=6653
     TOPOLOGY=$1
+    IP=$2
+    PORT=$3
 
     sudo mn --custom $TOPOLOGY \
             --topo mytopo \
